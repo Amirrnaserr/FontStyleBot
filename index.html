@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>استودیو فونت استوری</title>
+  
+  <!-- اسکریپت رسمی تلگرام و موتور رندر تصویر باکیفیت -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
+
+  <!-- فونت‌های فارسی (دارای crossorigin برای رندر بدون خطا در آیفون) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Harmattan:wght@700&family=Lalezar&family=Marhey:wght@700&family=Readex+Pro:wght@600;700&family=Rubik:wght@700;900&family=Vazirmatn:wght@400;700;900&display=swap" rel="stylesheet" crossorigin="anonymous">
+
+  <style>
+    /* 
+      نکته برای افزودن فونت‌های اختصاصی (مثل پیما، کلمه، دوران):
+      کافیست فایل woff2 فونت را کنار این فایل بگذارید و به شکل زیر تعریف کنید:
+      @font-face {
+        font-family: 'Kalameh';
+        src: url('./fonts/Kalameh-Bold.woff2') format('woff2');
+      }
+    */
+
+    :root {
+      --primary: #0080FF;
+      --primary-glow: rgba(0, 128, 255, 0.45);
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --bg-dark: #0a0f1d;
+      --text-light: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'Vazirmatn', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #003366, #0a0f1d 60%);
+      color: var(--text-light);
+      min-height: 100vh;
+      padding: 14px;
+      padding-bottom: 40px;
+      overflow-x: hidden;
+    }
+
+    /* هدر شیشه‌ای */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      margin-bottom: 14px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #ffffff, #66b2ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .bg-toggle-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    /* بخش پیش‌نمایش زنده (بوم استوری) */
+    .preview-wrapper {
+      position: relative;
+      width: 100%;
+      min-height: 250px;
+      border-radius: 22px;
+      border: 1px solid var(--glass-border);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      transition: background 0.3s ease;
+    }
+
+    /* پس‌زمینه شطرنجی برای نمایش شفافیت (فقط در پیش‌نمایش، در خروجی حذف می‌شود) */
+    .preview-wrapper.checkerboard {
+      background-color: #151c2c;
+      background-image: 
+        linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+
+    .preview-wrapper.sample-photo {
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #ff6b6b 100%);
+    }
+
+    /* ناحیه‌ای که از آن عکس بدون پس‌زمینه گرفته می‌شود */
+    #capture-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 28px;
+      width: 100%;
+      background: transparent !important;
+    }
+
+    .story-line {
+      transition: all 0.15s ease;
+      text-align: center;
+      line-height: 1.45;
+      word-break: break-word;
+      max-width: 100%;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .story-line.active-outline {
+      outline: 1.5px dashed rgba(0, 128, 255, 0.7);
+      outline-offset: 6px;
+      border-radius: 8px;
+    }
+
+    /* --- استایل‌های گرافیکی آماده برای متن‌ها --- */
+    
+    /* ۱. استایل گلس‌مورفیسم (Liquid Glass) */
+    .style-glass {
+      background: rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(255, 255, 255, 0.38);
+      padding: 8px 20px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    /* ۲. استایل نئون درخشان */
+    .style-neon {
+      text-shadow: 
+        0 0 8px currentColor,
+        0 0 18px currentColor,
+        0 0 32px currentColor;
+    }
+
+    /* ۳. استایل باکس اینستاگرامی (هایلایت) */
+    .style-badge {
+      background: var(--badge-bg, #0080FF);
+      padding: 6px 18px;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ۴. استایل سه‌بعدی و سایه سخت */
+    .style-3d {
+      -webkit-text-stroke: 1.5px #000;
+      text-shadow: 
+        3px 3px 0px #000,
+        5px 5px 0px var(--primary);
+    }
+
+    /* ۵. استایل استروک مینیمال (حاشیه مشکی خوانا روی هر ویدیو) */
+    .style-CleanShadow {
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.85), 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+
+    /* ۶. استایل گرادینت سلطنتی */
+    .style-gradient-box {
+      background: linear-gradient(135deg, #0080FF 0%, #00d2ff 100%);
+      padding: 8px 22px;
+      border-radius: 50px;
+      border: 1.5px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 8px 20px rgba(0, 128, 255, 0.45);
+    }
+
+    /* پنل کنترل شیشه‌ای */
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      border-radius: 22px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    /* تب‌های انتخاب لایه (متن ۱، ۲، ۳) */
+    .layer-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      color: #cbd5e1;
+      padding: 10px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: #66b2ff;
+      box-shadow: 0 4px 16px var(--primary-glow);
+    }
+
+    /* ورودی متن و سوییچ فعال‌سازی */
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .text-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .text-input:focus {
+      border-color: var(--primary);
+    }
+
+    .toggle-layer-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      padding: 0 14px;
+      border-radius: 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .toggle-layer-btn.off {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #fca5a5;
+    }
+
+    /* انتخاب‌گر افقی فونت و استایل */
+    .section-label {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .horizontal-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+    .horizontal-scroll::-webkit-scrollbar { display: none; }
+
+    .chip-btn {
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--glass-border);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .chip-btn.active {
+      background: rgba(0, 128, 255, 0.28);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* اسلایدر سایز و انتخاب رنگ */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .slider-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+
+    .color-palette {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .color-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .color-dot.active {
+      transform: scale(1.2);
+      border-color: #fff;
+    }
+
+    /* دکمه‌های خروجی و کپی */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      grid-column: span 2;
+      background: linear-gradient(135deg, #0080FF, #0055cc);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 14px;
+      border-radius: 16px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 8px 25px var(--primary-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-secondary {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: #fff;
+      padding: 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    /* مودال نمایش تصویر برای کپی دستی در صورت محدودیت کلیپ‌بورد */
+    #result-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 10, 20, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #result-modal img {
+      max-width: 90%;
+      max-height: 55vh;
+      border-radius: 16px;
+      border: 1px dashed rgba(255,255,255,0.3);
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #10b981;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 700;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- هدر -->
+  <div class="header">
+    <h1>✨ استودیو استوری‌فونت</h1>
+    <button class="bg-toggle-btn" onclick="togglePreviewBg()">تغییر پس‌زمینه تست</button>
+  </div>
+
+  <!-- بوم پیش‌نمایش زنده -->
+  <div class="preview-wrapper checkerboard" id="preview-box">
+    <div id="capture-area">
+      <div id="line-0" class="story-line" onclick="selectLayer(0)"></div>
+      <div id="line-1" class="story-line" onclick="selectLayer(1)"></div>
+      <div id="line-2" class="story-line" onclick="selectLayer(2)"></div>
+    </div>
+  </div>
+
+  <!-- پنل تنظیمات ۳ متن -->
+  <div class="glass-panel">
+    <!-- تب‌های ۳ لایه -->
+    <div class="layer-tabs">
+      <button class="tab-btn active" id="tab-0" onclick="selectLayer(0)">متن اول (تیتر)</button>
+      <button class="tab-btn" id="tab-1" onclick="selectLayer(1)">متن دوم (توضیح)</button>
+      <button class="tab-btn" id="tab-2" onclick="selectLayer(2)">متن سوم (تگ)</button>
+    </div>
+
+    <!-- ورودی متن لایه فعال -->
+    <div class="input-row">
+      <input type="text" id="text-input" class="text-input" placeholder="متن خود را بنویسید..." oninput="updateCurrentLayerText(this.value)" />
+      <button id="toggle-vis-btn" class="toggle-layer-btn" onclick="toggleLayerVisibility()">فعال</button>
+    </div>
+
+    <!-- انتخاب فونت -->
+    <span class="section-label">انتخاب فونت فارسی:</span>
+    <div class="horizontal-scroll" id="font-list"></div>
+
+    <!-- انتخاب استایل گرافیکی -->
+    <span class="section-label">استایل ظاهری (افکت):</span>
+    <div class="horizontal-scroll" id="style-list"></div>
+
+    <!-- سایز و رنگ -->
+    <div class="controls-grid">
+      <div class="slider-box">
+        <span class="section-label" style="margin:0;">سایز:</span>
+        <input type="range" id="size-slider" min="16" max="54" value="28" oninput="updateCurrentLayerSize(this.value)" />
+      </div>
+      <div class="color-palette" id="color-list"></div>
+    </div>
+  </div>
+
+  <!-- دکمه‌های کپی و خروجی -->
+  <div class="actions-grid">
+    <button class="btn-primary" onclick="exportSticker('all', 'copy')">
+      📋 کپی یکجای هر ۳ متن (PNG شفاف)
+    </button>
+    <button class="btn-secondary" onclick="exportSticker('single', 'copy')">
+      🎯 کپی فقط لایه فعلی
+    </button>
+    <button class="btn-secondary" onclick="exportSticker('all', 'share')">
+      📲 اشتراک / کپی آیفون (Share)
+    </button>
+  </div>
+
+  <!-- مودال پشتیبان برای نگه داشتن انگشت و کپی -->
+  <div id="result-modal">
+    <p style="margin-bottom: 12px; font-size: 14px; text-align: center;">
+      انگشت خود را روی تصویر زیر نگه دارید و <b>Copy (کپی)</b> را بزنید، سپس در استوری اینستاگرام Paste کنید:
+    </p>
+    <img id="result-img" src="" alt="خروجی استیکر" />
+    <button class="btn-secondary" style="width: 160px;" onclick="closeModal()">بستن</button>
+  </div>
+
+  <div id="toast" class="toast">✅ در کلیپ‌بورد کپی شد! آماده Paste در استوری</div>
+
+  <script>
+    // مقداردهی اولیه مینی‌اپ تلگرام
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    // لیست فونت‌ها
+    const fonts = [
+      { id: 'Lalezar', name: 'لاله‌زار (تیتر)' },
+      { id: 'Vazirmatn', name: 'وزیرمتن (مدرن)' },
+      { id: 'Marhey', name: 'مرهی (فانتزی)' },
+      { id: 'Rubik', name: 'روبیک (ضخیم)' },
+      { id: 'Readex Pro', name: 'ریدکس (مینیمال)' },
+      { id: 'Harmattan', name: 'هرمتن (کلاسیک)' }
+    ];
+
+    // لیست استایل‌ها
+    const styles = [
+      { id: 'style-CleanShadow', name: 'سایه نرم' },
+      { id: 'style-glass', name: 'شیشه‌ای (Liquid Glass)' },
+      { id: 'style-gradient-box', name: 'کپسول آبی' },
+      { id: 'style-badge', name: 'باکس هایلایت' },
+      { id: 'style-neon', name: 'نئون درخشان' },
+      { id: 'style-3d', name: 'سه‌بعدی (3D)' }
+    ];
+
+    // لیست رنگ‌ها
+    const colors = ['#FFFFFF', '#0080FF', '#38bdf8', '#facc15', '#f43f5e', '#10b981'];
+
+    // وضعیت ۳ لایه متنی (هرکدام استایل کاملاً مستقل دارند)
+    let activeLayerIndex = 0;
+    const layers = [
+      {
+        text: 'کیفیت، اتفاقی نیست ✨',
+        font: 'Lalezar',
+        style: 'style-gradient-box',
+        size: 32,
+        color: '#FFFFFF',
+        visible: true
+      },
+      {
+        text: 'طراحی اختصاصی استوری با استایل شیشه‌ای',
+        font: 'Vazirmatn',
+        style: 'style-glass',
+        size: 19,
+        color: '#FFFFFF',
+        visible: true
+      },
+      {
+        text: 'برای مشاهده نمونه کارها ضربه بزنید 👇',
+        font: 'Marhey',
+        style: 'style-neon',
+        size: 18,
+        color: '#38bdf8',
+        visible: true
+      }
+    ];
+
+    // رندر دکمه‌های فونت، استایل و رنگ در پنل
+    function initControls() {
+      const fontList = document.getElementById('font-list');
+      fonts.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'chip-btn';
+        btn.style.fontFamily = f.id;
+        btn.innerText = f.name;
+        btn.onclick = () => { layers[activeLayerIndex].font = f.id; renderAll(); };
+        btn.dataset.id = f.id;
+        fontList.appendChild(btn);
+      });
+
+      const styleList = document.getElementById('style-list');
+      styles.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'chip-btn';
+        btn.innerText = s.name;
+        btn.onclick = () => { layers[activeLayerIndex].style = s.id; renderAll(); };
+        btn.dataset.id = s.id;
+        styleList.appendChild(btn);
+      });
+
+      const colorList = document.getElementById('color-list');
+      colors.forEach(c => {
+        const dot = document.createElement('div');
+        dot.className = 'color-dot';
+        dot.style.backgroundColor = c;
+        dot.onclick = () => { layers[activeLayerIndex].color = c; renderAll(); };
+        dot.dataset.color = c;
+        colorList.appendChild(dot);
+      });
+
+      selectLayer(0);
+    }
+
+    // انتخاب یکی از ۳ لایه برای ویرایش
+    function selectLayer(index) {
+      activeLayerIndex = index;
+      const layer = layers[index];
+
+      // آپدیت تب‌ها
+      for (let i = 0; i < 3; i++) {
+        document.getElementById(`tab-${i}`).classList.toggle('active', i === index);
+      }
+
+      // آپدیت مقادیر ورودی
+      document.getElementById('text-input').value = layer.text;
+      document.getElementById('size-slider').value = layer.size;
+
+      const visBtn = document.getElementById('toggle-vis-btn');
+      visBtn.innerText = layer.visible ? 'فعال' : 'مخفی';
+      visBtn.classList.toggle('off', !layer.visible);
+
+      renderAll();
+    }
+
+    function updateCurrentLayerText(val) {
+      layers[activeLayerIndex].text = val;
+      renderAll();
+    }
+
+    function updateCurrentLayerSize(val) {
+      layers[activeLayerIndex].size = parseInt(val, 10);
+      renderAll();
+    }
+
+    function toggleLayerVisibility() {
+      layers[activeLayerIndex].visible = !layers[activeLayerIndex].visible;
+      selectLayer(activeLayerIndex);
+    }
+
+    // رندر زنده هر ۳ متن روی بوم
+    function renderAll() {
+      layers.forEach((layer, i) => {
+        const el = document.getElementById(`line-${i}`);
+        el.style.display = (layer.visible && layer.text.trim() !== '') ? 'block' : 'none';
+        el.innerText = layer.text;
+        el.style.fontFamily = `'${layer.font}', sans-serif`;
+        el.style.fontSize = `${layer.size}px`;
+        el.style.color = layer.color;
+        el.style.fontWeight = '700';
+
+        // اعمال کلاس استایل و هایلایت لایه فعال
+        el.className = `story-line ${layer.style}`;
+        if (i === activeLayerIndex) {
+          el.classList.add('active-outline');
+        }
+      });
+
+      // آپدیت وضعیت دکمه‌های انتخاب‌شده در پنل
+      const current = layers[activeLayerIndex];
+      document.querySelectorAll('#font-list .chip-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.id === current.font);
+      });
+      document.querySelectorAll('#style-list .chip-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.id === current.style);
+      });
+      document.querySelectorAll('#color-list .color-dot').forEach(d => {
+        d.classList.toggle('active', d.dataset.color === current.color);
+      });
+    }
+
+    function togglePreviewBg() {
+      const box = document.getElementById('preview-box');
+      box.classList.toggle('checkerboard');
+      box.classList.toggle('sample-photo');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 2800);
+    }
+
+    function closeModal() {
+      document.getElementById('result-modal').style.display = 'none';
+    }
+
+    // موتور خروجی PNG شفاف با کیفیت 3x Retina
+    async function exportSticker(scope, actionType) {
+      // حذف موقت کادر نقطه‌چین دور لایه فعال قبل از عکسبرداری
+      document.querySelectorAll('.story-line').forEach(el => el.classList.remove('active-outline'));
+
+      const targetNode = scope === 'single'
+        ? document.getElementById(`line-${activeLayerIndex}`)
+        : document.getElementById('capture-area');
+
+      try {
+        const options = {
+          pixelRatio: 3, // کیفیت فوق‌العاده بالا برای استوری (1080p)
+          backgroundColor: null, // ۱۰۰٪ بدون پس‌زمینه (Transparent)
+          cacheBust: true
+        };
+
+        // فراخوانی اول برای لود کامل فونت‌ها در موتور WebKit آیفون
+        await htmlToImage.toPng(targetNode, options);
+        // فراخوانی اصلی برای تولید فایل نهایی
+        const blob = await htmlToImage.toBlob(targetNode, options);
+
+        // بازگرداندن کادر انتخاب
+        renderAll();
+
+        if (!blob) throw new Error('خطا در ساخت تصویر');
+
+        // ۱. اگر کاربر دکمه اشتراک/کپی آیفون را زده باشد
+        if (actionType === 'share' && navigator.canShare) {
+          const file = new File([blob], 'story-sticker.png', { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'استیکر استوری'
+            });
+            return;
+          }
+        }
+
+        // ۲. تلاش برای کپی مستقیم تصویر شفاف به کلیپ‌بورد گوشی
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          showToast('✅ تصویر شفاف کپی شد! در استوری اینستاگرام Paste کنید');
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          return;
+        }
+
+        // ۳. در صورتی که مرورگر داخلی اجازه دسترسی مستقیم به کلیپ‌بورد ندهد، مودال تصویر باز می‌شود
+        const dataUrl = URL.createObjectURL(blob);
+        document.getElementById('result-img').src = dataUrl;
+        document.getElementById('result-modal').style.display = 'flex';
+
+      } catch (err) {
+        renderAll();
+        // باز کردن مودال پشتیبان در صورت محدودیت WebView
+        const dataUrl = await htmlToImage.toPng(targetNode, { pixelRatio: 3, backgroundColor: null });
+        document.getElementById('result-img').src = dataUrl;
+        document.getElementById('result-modal').style.display = 'flex';
+      }
+    }
+
+    initControls();
+  </script>
+</body>
+</html>
